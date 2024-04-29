@@ -1,0 +1,255 @@
+<!doctype html>
+<!--[if lt IE 7 ]> <html lang="en" class="ie6"> <![endif]-->
+<!--[if IE 7 ]>    <html lang="en" class="ie7"> <![endif]-->
+<!--[if IE 8 ]>    <html lang="en" class="ie8"> <![endif]-->
+<!--[if IE 9 ]>    <html lang="en" class="ie9"> <![endif]-->
+<!--[if !IE]><!-->
+<html lang="en"> <!--<![endif]-->
+
+<head>
+	<title>Privredni savetnik</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<meta name="robots" content="noindex, nofollow">
+
+	<script type="text/javascript" src="assets/extras/jquery.min.1.7.js"></script>
+	<script type="text/javascript" src="assets/extras/modernizr.2.5.3.min.js"></script>
+	<script type="text/javascript" src="assets/lib/hash.js"></script>
+
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link
+		href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap"
+		rel="stylesheet">
+
+</head>
+
+<body>
+
+	<div id="canvas">
+
+		<div class="magazine-viewport">
+			<div class="container">
+				<div class="magazine">
+					<!-- Next button -->
+					<div ignore="1" class="next-button"></div>
+					<!-- Previous button -->
+					<div ignore="1" class="previous-button"></div>
+				</div>
+			</div>
+		</div>
+
+	</div>
+
+	<script type="text/javascript">
+
+		function loadApp() {
+
+			$('#canvas').fadeIn(1000);
+
+			var flipbook = $('.magazine');
+
+			// Check if the CSS was already loaded
+
+			if (flipbook.width() == 0 || flipbook.height() == 0) {
+				setTimeout(loadApp, 10);
+				return;
+			}
+
+			var ratio = screen.width <= 700 ? 'single' : 'double';
+
+			// Create the flipbook
+
+			flipbook.turn({
+
+				// Duration in millisecond
+
+				duration: 1000,
+
+				// Hardware acceleration
+
+				acceleration: !isChrome(),
+
+				// Enables gradients
+
+				gradients: true,
+
+				// Auto center this flipbook
+
+				autoCenter: true,
+
+				// Elevation from the edge of the flipbook when turning a page
+
+				elevation: 50,
+
+				// The number of pages
+
+				pages: 8,
+
+				// Single page or two pages
+				display: ratio,
+
+				// Events
+
+				when: {
+					turning: function (event, page, view) {
+
+						var book = $(this),
+							currentPage = book.turn('page'),
+							pages = book.turn('pages');
+
+						// Update the current URI
+
+						Hash.go('page/' + page).update();
+
+						// Show and hide navigation buttons
+
+						disableControls(page);
+
+
+						$('.thumbnails .page-' + currentPage).
+							parent().
+							removeClass('current');
+
+						$('.thumbnails .page-' + page).
+							parent().
+							addClass('current');
+
+
+
+					},
+
+					turned: function (event, page, view) {
+
+						disableControls(page);
+
+						$(this).turn('center');
+
+						if (page == 1) {
+							$(this).turn('peel', 'br');
+						}
+
+					},
+
+					missing: function (event, pages) {
+
+						// Add pages that aren't in the magazine
+
+						for (var i = 0; i < pages.length; i++)
+							addPage(pages[i], $(this));
+
+					}
+				}
+
+			});
+
+			//Initialize the zoom viewport
+			$('.magazine-viewport').zoom({
+				flipbook: $('.magazine')
+			});
+
+			//Binds the single tap event to the zoom function
+			// $('.magazine-viewport').bind('zoom.tap', zoomTo);
+
+			//Optional, calls the resize function when the window changes, useful when viewing on tablet or mobile phones
+			$(window).resize(function () {
+				resizeViewport();
+			}).bind('orientationchange', function () {
+				resizeViewport();
+			});
+
+			//Must be called initially to setup the size
+			resizeViewport();
+
+			// URIs - Format #/page/1 
+
+			Hash.on('^page\/([0-9]*)$', {
+				yep: function (path, parts) {
+					var page = parts[1];
+
+					if (page !== undefined) {
+						if ($('.magazine').turn('is'))
+							$('.magazine').turn('page', page);
+					}
+
+				},
+				nop: function (path) {
+
+					if ($('.magazine').turn('is'))
+						$('.magazine').turn('page', 1);
+				}
+			});
+
+
+			// Events for the next button
+
+			$('.next-button').bind($.mouseEvents.over, function () {
+
+				$(this).addClass('next-button-hover');
+
+			}).bind($.mouseEvents.out, function () {
+
+				$(this).removeClass('next-button-hover');
+
+			}).bind($.mouseEvents.down, function () {
+
+				$(this).addClass('next-button-down');
+
+			}).bind($.mouseEvents.up, function () {
+
+				$(this).removeClass('next-button-down');
+
+			}).click(function () {
+
+				$('.magazine').turn('next');
+
+			});
+
+			// Events for the next button
+
+			$('.previous-button').bind($.mouseEvents.over, function () {
+
+				$(this).addClass('previous-button-hover');
+
+			}).bind($.mouseEvents.out, function () {
+
+				$(this).removeClass('previous-button-hover');
+
+			}).bind($.mouseEvents.down, function () {
+
+				$(this).addClass('previous-button-down');
+
+			}).bind($.mouseEvents.up, function () {
+
+				$(this).removeClass('previous-button-down');
+
+			}).click(function () {
+
+				$('.magazine').turn('previous');
+
+			});
+
+
+			resizeViewport();
+
+			$('.magazine').addClass('animated');
+
+		}
+
+		$('#canvas').hide();
+
+
+		// Load the HTML4 version if there's not CSS transform
+
+		yepnope({
+			test: Modernizr.csstransforms,
+			yep: ['assets/lib/turn.js'],
+			nope: ['assets/lib/turn.html4.min.js'],
+			both: ['assets/lib/zoom.min.js', 'assets/js/magazine.js', 'assets/css/magazine.css', 'assets/css/pages.css'],
+			complete: loadApp
+		});
+
+	</script>
+
+</body>
+
+</html>
